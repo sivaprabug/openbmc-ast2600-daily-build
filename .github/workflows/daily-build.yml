@@ -43,23 +43,23 @@ jobs:
           git clone https://github.com/openbmc/openbmc ${{ github.workspace }}/openbmc
           cd ${{ github.workspace }}/openbmc
 
-          # Correct build directory name
-          . setup evb-ast2600 build-evb-ast2600
+          # Correct setup (OpenBMC uses "build" as dir)
+          . setup evb-ast2600 build
 
-          # Modify the correct local.conf
-          echo 'INHERIT += "ccache"' >> build-evb-ast2600/conf/local.conf
-          echo 'SSTATE_DIR = "${{ github.workspace }}/sstate-cache"' >> build-evb-ast2600/conf/local.conf
+          # Update the correct local.conf
+          echo 'INHERIT += "ccache"' >> build/conf/local.conf
+          echo 'SSTATE_DIR = "${{ github.workspace }}/sstate-cache"' >> build/conf/local.conf
 
       - name: Build AST2600 Image
         run: |
           cd ${{ github.workspace }}/openbmc
-          . setup evb-ast2600 build-evb-ast2600
+          . setup evb-ast2600 build
           bitbake obmc-phosphor-image -v
 
       - name: Prepare artifacts
         run: |
           mkdir release
-          cp ${{ github.workspace }}/openbmc/build-evb-ast2600/tmp/deploy/images/evb-ast2600/* release/
+          cp ${{ github.workspace }}/openbmc/build/tmp/deploy/images/evb-ast2600/* release/
 
       - name: Create GitHub Release
         uses: softprops/action-gh-release@v1
