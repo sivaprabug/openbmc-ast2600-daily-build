@@ -51,9 +51,9 @@ jobs:
         run: |
           git clone https://github.com/openbmc/openbmc ~/openbmc
           cd ~/openbmc
-          echo 'INHERIT += "ccache"' >> conf/local.conf
-          echo 'SSTATE_DIR = "~/openbmc/sstate-cache"' >> conf/local.conf
           . setup evb-ast2600 ast2600_build
+          echo 'INHERIT += "ccache"' >> ast2600_build/conf/local.conf
+          echo 'SSTATE_DIR = "~/openbmc/sstate-cache"' >> ast2600_build/conf/local.conf
 
       # -----------------------------
       # BUILD IMAGE
