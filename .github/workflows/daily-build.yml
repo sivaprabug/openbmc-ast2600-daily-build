@@ -23,7 +23,7 @@ jobs:
             ccache
 
       # -----------------------------
-      # SSTATE CACHE
+      # RESTORE SSTATE CACHE
       # -----------------------------
       - name: Restore sstate cache
         uses: actions/cache@v3
@@ -34,7 +34,7 @@ jobs:
             sstate-${{ runner.os }}-
 
       # -----------------------------
-      # CCACHE
+      # RESTORE CCACHE
       # -----------------------------
       - name: Restore ccache
         uses: actions/cache@v3
@@ -51,9 +51,13 @@ jobs:
         run: |
           git clone https://github.com/openbmc/openbmc ~/openbmc
           cd ~/openbmc
-          . setup evb-ast2600 ast2600_build
-          echo 'INHERIT += "ccache"' >> ast2600_build/conf/local.conf
-          echo 'SSTATE_DIR = "~/openbmc/sstate-cache"' >> ast2600_build/conf/local.conf
+
+          # Create build directory and local.conf
+          . setup evb-ast2600 evb-ast2600
+
+          # Enable ccache + sstate
+          echo 'INHERIT += "ccache"' >> evb-ast2600/conf/local.conf
+          echo 'SSTATE_DIR = "~/openbmc/sstate-cache"' >> evb-ast2600/conf/local.conf
 
       # -----------------------------
       # BUILD IMAGE
@@ -61,7 +65,7 @@ jobs:
       - name: Build AST2600 Image
         run: |
           cd ~/openbmc
-          . setup evb-ast2600 ast2600_build
+          . setup evb-ast2600 evb-ast2600
           bitbake obmc-phosphor-image -v
 
       # -----------------------------
@@ -70,7 +74,7 @@ jobs:
       - name: Prepare artifacts
         run: |
           mkdir -p release
-          cp ~/openbmc/ast2600_build/tmp/deploy/images/evb-ast2600/* release/
+          cp ~/openbmc/evb-ast2600/tmp/deploy/images/evb-ast2600/* release/
 
       # -----------------------------
       # CREATE GITHUB RELEASE
