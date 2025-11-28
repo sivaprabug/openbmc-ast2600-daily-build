@@ -2,7 +2,7 @@ name: Daily OpenBMC AST2600 Build + Release
 
 on:
   schedule:
-    - cron: "30 18 * * *"  # 12:00 AM IST
+    - cron: "30 18 * * *"   # 12:00 AM IST
   workflow_dispatch:
 
 jobs:
@@ -11,10 +11,15 @@ jobs:
     timeout-minutes: 420
 
     steps:
+      # -------------------------------------------------------
+      # CHECKOUT WORKFLOW REPO
+      # -------------------------------------------------------
       - name: Checkout workflow repo
         uses: actions/checkout@v3
 
-      # Yocto deps
+      # -------------------------------------------------------
+      # INSTALL YOCTO DEPENDENCIES
+      # -------------------------------------------------------
       - name: Install Yocto Dependencies
         run: |
           sudo apt update
@@ -23,8 +28,10 @@ jobs:
             xz-utils debianutils iputils-ping python3-git python3-jinja2 zstd \
             ccache file tar gzip
 
-      # SSTATE cache
-      - name: Restore sstate cache
+      # -------------------------------------------------------
+      # RESTORE SSTATE CACHE
+      # -------------------------------------------------------
+      - name: Restore SSTATE cache
         uses: actions/cache@v3
         with:
           path: /home/runner/sstate-cache
@@ -32,8 +39,10 @@ jobs:
           restore-keys: |
             sstate-${{ runner.os }}-
 
-      # CCACHE
-      - name: Restore ccache
+      # -------------------------------------------------------
+      # RESTORE CCACHE
+      # -------------------------------------------------------
+      - name: Restore CCACHE
         uses: actions/cache@v3
         with:
           path: ~/.ccache
@@ -41,37 +50,47 @@ jobs:
           restore-keys: |
             ccache-${{ runner.os }}-
 
-      # Clone & setup OpenBMC (recursive)
+      # -------------------------------------------------------
+      # CLONE OPENBMC + RUN SETUP
+      # (creates conf/local.conf directly in openbmc/)
+      # -------------------------------------------------------
       - name: Clone OpenBMC
         run: |
           cd /home/runner
           git clone --recursive https://github.com/openbmc/openbmc
           cd openbmc
 
-          # Yocto will create build/evb-ast2600 automatically
+          # EXACT commands you use locally:
           . setup evb-ast2600
 
-          # Modify real local.conf path
-          echo 'INHERIT += "ccache"' >> build/evb-ast2600/conf/local.conf
-          echo 'SSTATE_DIR = "/home/runner/sstate-cache"' >> build/evb-ast2600/conf/local.conf
-          echo 'CCACHE_DIR = "~/.ccache"' >> build/evb-ast2600/conf/local.conf
+          # GitHub Actions Setup creates:
+          #   openbmc/conf/local.conf  (NOT build/)
+          echo 'INHERIT += "ccache"' >> conf/local.conf
+          echo 'SSTATE_DIR = "/home/runner/sstate-cache"' >> conf/local.conf
+          echo 'CCACHE_DIR = "~/.ccache"' >> conf/local.conf
 
-      # Build OpenBMC image
+      # -------------------------------------------------------
+      # BUILD THE IMAGE
+      # -------------------------------------------------------
       - name: Build AST2600 Image
         run: |
           cd /home/runner/openbmc
           . setup evb-ast2600
           bitbake obmc-phosphor-image -v
 
-      # Prepare release artifacts
+      # -------------------------------------------------------
+      # PACKAGE RELEASE ARTIFACTS
+      # -------------------------------------------------------
       - name: Prepare artifacts
         run: |
           mkdir release
-          cp /home/runner/openbmc/build/evb-ast2600/tmp/deploy/images/evb-ast2600/* release/
+          cp /home/runner/openbmc/tmp/deploy/images/evb-ast2600/* release/
           cd release
           zip -r ast2600-image.zip *
 
-      # GitHub release
+      # -------------------------------------------------------
+      # CREATE GITHUB RELEASE
+      # -------------------------------------------------------
       - name: Create GitHub Release
         uses: softprops/action-gh-release@v1
         with:
@@ -80,7 +99,9 @@ jobs:
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
-      # Upload artifacts
+      # -------------------------------------------------------
+      # UPLOAD ARTIFACTS
+      # -------------------------------------------------------
       - name: Upload Release Assets
         uses: softprops/action-gh-release@v1
         with:
