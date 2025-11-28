@@ -11,9 +11,9 @@ jobs:
     timeout-minutes: 420
 
     steps:
-      # -----------------------------
-      # YOCTO DEPENDENCIES
-      # -----------------------------
+      - name: Checkout repo
+        uses: actions/checkout@v3
+
       - name: Install Yocto Dependencies
         run: |
           sudo apt update
@@ -22,20 +22,14 @@ jobs:
             xz-utils debianutils iputils-ping python3-git python3-jinja2 zstd \
             ccache
 
-      # -----------------------------
-      # RESTORE SSTATE CACHE
-      # -----------------------------
       - name: Restore sstate cache
         uses: actions/cache@v3
         with:
-          path: ~/openbmc/sstate-cache
+          path: ${{ github.workspace }}/sstate-cache
           key: sstate-${{ runner.os }}-${{ github.run_id }}
           restore-keys: |
             sstate-${{ runner.os }}-
 
-      # -----------------------------
-      # RESTORE CCACHE
-      # -----------------------------
       - name: Restore ccache
         uses: actions/cache@v3
         with:
@@ -44,55 +38,37 @@ jobs:
           restore-keys: |
             ccache-${{ runner.os }}-
 
-      # -----------------------------
-      # CLONE OPENBMC
-      # -----------------------------
       - name: Clone OpenBMC
         run: |
-          git clone https://github.com/openbmc/openbmc ~/openbmc
-          cd ~/openbmc
+          git clone https://github.com/openbmc/openbmc ${{ github.workspace }}/openbmc
+          cd ${{ github.workspace }}/openbmc
 
-          # Create build directory and local.conf
+          # Create build directory
           . setup evb-ast2600 evb-ast2600
 
-          # Enable ccache + sstate
+          # Add Yocto config settings
           echo 'INHERIT += "ccache"' >> evb-ast2600/conf/local.conf
-          echo 'SSTATE_DIR = "~/openbmc/sstate-cache"' >> evb-ast2600/conf/local.conf
+          echo 'SSTATE_DIR = "${{ github.workspace }}/sstate-cache"' >> evb-ast2600/conf/local.conf
 
-      # -----------------------------
-      # BUILD IMAGE
-      # -----------------------------
       - name: Build AST2600 Image
         run: |
-          cd ~/openbmc
+          cd ${{ github.workspace }}/openbmc
           . setup evb-ast2600 evb-ast2600
           bitbake obmc-phosphor-image -v
 
-      # -----------------------------
-      # PACKAGE ARTIFACTS
-      # -----------------------------
       - name: Prepare artifacts
         run: |
-          mkdir -p release
-          cp ~/openbmc/evb-ast2600/tmp/deploy/images/evb-ast2600/* release/
+          mkdir release
+          cp ${{ github.workspace }}/openbmc/evb-ast2600/tmp/deploy/images/evb-ast2600/* release/
 
-      # -----------------------------
-      # CREATE GITHUB RELEASE
-      # -----------------------------
       - name: Create GitHub Release
-        id: create_release
         uses: softprops/action-gh-release@v1
         with:
           tag_name: "daily-${{ github.run_number }}"
           name: "Daily AST2600 Build #${{ github.run_number }}"
-          draft: false
-          prerelease: false
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
-      # -----------------------------
-      # UPLOAD RELEASE ASSETS
-      # -----------------------------
       - name: Upload Release Assets
         uses: softprops/action-gh-release@v1
         with:
@@ -101,9 +77,6 @@ jobs:
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
-  # ------------------------------------
-  # AUTO DELETE OLD RELEASES (KEEP 7)
-  # ------------------------------------
   clean:
     runs-on: ubuntu-latest
     needs: build
