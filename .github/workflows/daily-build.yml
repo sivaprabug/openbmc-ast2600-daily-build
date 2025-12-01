@@ -2,7 +2,7 @@ name: Daily OpenBMC AST2600 Build + Release
 
 on:
   schedule:
-    - cron: "30 18 * * *"   # 12:00 AM IST
+    #- cron: "30 18 * * *"   # 12:00 AM IST
   workflow_dispatch:
 
 jobs:
